@@ -54,7 +54,7 @@ public class StoredHeader extends AbstractStored implements Serializable {
 
     @Override
     public int hashCode() {
-        return super.hashCode() ^ 33;
+        return super.hashCode() ^ 37;
     }
 
     /** Serializes the stored block to a custom packed format. Used by {@link CheckpointManager}. */

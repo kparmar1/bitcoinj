@@ -55,11 +55,11 @@ public class BuildCheckpoints {
         BriefLogFormatter.initWithSilentBitcoinJ();
 
         // Sorted map of block height to StoredBlock object.
-        final TreeMap<Integer, StoredBlock> checkpoints = new TreeMap<Integer, StoredBlock>();
+        final TreeMap<Integer, StoredHeader> checkpoints = new TreeMap<Integer, StoredHeader>();
 
         // Configure bitcoinj to fetch only headers, not save them to disk, connect to a local fully synced/validated
         // node and to save block headers that are on interval boundaries, as long as they are <1 month old.
-        final BlockStore store = new MemoryBlockStore(PARAMS);
+        final BlockStore<StoredHeader> store = new MemoryBlockStore(PARAMS);
         final BlockChain chain = new BlockChain(PARAMS, store);
         final PeerGroup peerGroup = new PeerGroup(PARAMS, chain);
         final InetAddress peerAddress = InetAddress.getLocalHost();
@@ -70,13 +70,13 @@ public class BuildCheckpoints {
 
         final long oneMonthAgo = now - (86400 * 30);
 
-        chain.addListener(new AbstractBlockChainListener() {
+        chain.addListener(new AbstractBlockChainListener<StoredHeader>() {
             @Override
-            public void notifyNewBestBlock(StoredBlock block) throws VerificationException {
+            public void notifyNewBestBlock(StoredHeader block) throws VerificationException {
                 int height = block.getHeight();
-                if (height % PARAMS.getInterval() == 0 && block.getHeader().getTimeSeconds() <= oneMonthAgo) {
+                if (height % PARAMS.getInterval() == 0 && block.getBlock().getTimeSeconds() <= oneMonthAgo) {
                     System.out.println(String.format("Checkpointing block %s at height %d",
-                            block.getHeader().getHash(), block.getHeight()));
+                            block.getBlock().getHash(), block.getHeight()));
                     checkpoints.put(height, block);
                 }
             }
@@ -99,7 +99,7 @@ public class BuildCheckpoints {
         sanityCheck(TEXTUAL_CHECKPOINTS_FILE, checkpoints.size());
     }
 
-    private static void writeBinaryCheckpoints(TreeMap<Integer, StoredBlock> checkpoints, File file) throws Exception {
+    private static void writeBinaryCheckpoints(TreeMap<Integer, StoredHeader> checkpoints, File file) throws Exception {
         final FileOutputStream fileOutputStream = new FileOutputStream(file, false);
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
         final DigestOutputStream digestOutputStream = new DigestOutputStream(fileOutputStream, digest);
@@ -109,8 +109,8 @@ public class BuildCheckpoints {
         dataOutputStream.writeInt(0);  // Number of signatures to read. Do this later.
         digestOutputStream.on(true);
         dataOutputStream.writeInt(checkpoints.size());
-        ByteBuffer buffer = ByteBuffer.allocate(StoredBlock.COMPACT_SERIALIZED_SIZE);
-        for (StoredBlock block : checkpoints.values()) {
+        ByteBuffer buffer = ByteBuffer.allocate(StoredHeader.COMPACT_SERIALIZED_SIZE);
+        for (StoredHeader block : checkpoints.values()) {
             block.serializeCompact(buffer);
             dataOutputStream.write(buffer.array());
             buffer.position(0);
@@ -123,13 +123,13 @@ public class BuildCheckpoints {
         System.out.println("Checkpoints written to '" + file.getCanonicalPath() + "'.");
     }
 
-    private static void writeTextualCheckpoints(TreeMap<Integer, StoredBlock> checkpoints, File file) throws IOException {
+    private static void writeTextualCheckpoints(TreeMap<Integer, StoredHeader> checkpoints, File file) throws IOException {
         PrintWriter writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(file), Charsets.US_ASCII));
         writer.println("TXT CHECKPOINTS 1");
         writer.println("0"); // Number of signatures to read. Do this later.
         writer.println(checkpoints.size());
-        ByteBuffer buffer = ByteBuffer.allocate(StoredBlock.COMPACT_SERIALIZED_SIZE);
-        for (StoredBlock block : checkpoints.values()) {
+        ByteBuffer buffer = ByteBuffer.allocate(StoredHeader.COMPACT_SERIALIZED_SIZE);
+        for (StoredHeader block : checkpoints.values()) {
             block.serializeCompact(buffer);
             writer.println(CheckpointManager.BASE64.encode(buffer.array()));
             buffer.position(0);
@@ -143,14 +143,14 @@ public class BuildCheckpoints {
         checkState(manager.numCheckpoints() == expectedSize);
 
         if (PARAMS.getId().equals(NetworkParameters.ID_MAINNET)) {
-            StoredBlock test = manager.getCheckpointBefore(1390500000); // Thu Jan 23 19:00:00 CET 2014
+            AbstractStored test = manager.getCheckpointBefore(1390500000); // Thu Jan 23 19:00:00 CET 2014
             checkState(test.getHeight() == 280224);
-            checkState(test.getHeader().getHashAsString()
+            checkState(test.getBlock().getHashAsString()
                     .equals("00000000000000000b5d59a15f831e1c45cb688a4db6b0a60054d49a9997fa34"));
         } else if (PARAMS.getId().equals(NetworkParameters.ID_TESTNET)) {
-            StoredBlock test = manager.getCheckpointBefore(1390500000); // Thu Jan 23 19:00:00 CET 2014
+            AbstractStored test = manager.getCheckpointBefore(1390500000); // Thu Jan 23 19:00:00 CET 2014
             checkState(test.getHeight() == 167328);
-            checkState(test.getHeader().getHashAsString()
+            checkState(test.getBlock().getHashAsString()
                     .equals("0000000000035ae7d5025c2538067fe7adb1cf5d5d9c31b024137d9090ed13a9"));
         }
     }

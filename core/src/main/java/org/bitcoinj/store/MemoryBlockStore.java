@@ -22,23 +22,23 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Keeps {@link org.bitcoinj.core.StoredBlock}s in memory. Used primarily for unit testing.
+ * Keeps {@link org.bitcoinj.core.StoredHeader}s in memory. Used primarily for unit testing.
  */
-public class MemoryBlockStore implements BlockStore {
-    private LinkedHashMap<Sha256Hash, StoredBlock> blockMap = new LinkedHashMap<Sha256Hash, StoredBlock>() {
+public class MemoryBlockStore implements BlockStore<StoredHeader> {
+    private LinkedHashMap<Sha256Hash, StoredHeader> blockMap = new LinkedHashMap<Sha256Hash, StoredHeader>() {
         @Override
-        protected boolean removeEldestEntry(Map.Entry<Sha256Hash, StoredBlock> eldest) {
+        protected boolean removeEldestEntry(Map.Entry<Sha256Hash, StoredHeader> eldest) {
             return blockMap.size() > 5000;
         }
     };
-    private StoredBlock chainHead;
+    private StoredHeader chainHead;
     private NetworkParameters params;
 
     public MemoryBlockStore(NetworkParameters params) {
         // Insert the genesis block.
         try {
             Block genesisHeader = params.getGenesisBlock().cloneAsHeader();
-            StoredBlock storedGenesis = new StoredBlock(genesisHeader, genesisHeader.getWork(), 0);
+            StoredHeader storedGenesis = new StoredHeader(genesisHeader, genesisHeader.getWork(), 0);
             put(storedGenesis);
             setChainHead(storedGenesis);
             this.params = params;
@@ -50,26 +50,26 @@ public class MemoryBlockStore implements BlockStore {
     }
 
     @Override
-    public synchronized void put(StoredBlock block) throws BlockStoreException {
+    public synchronized void put(StoredHeader block) throws BlockStoreException {
         if (blockMap == null) throw new BlockStoreException("MemoryBlockStore is closed");
-        Sha256Hash hash = block.getHeader().getHash();
+        Sha256Hash hash = block.getBlock().getHash();
         blockMap.put(hash, block);
     }
 
     @Override
-    public synchronized StoredBlock get(Sha256Hash hash) throws BlockStoreException {
+    public synchronized StoredHeader get(Sha256Hash hash) throws BlockStoreException {
         if (blockMap == null) throw new BlockStoreException("MemoryBlockStore is closed");
         return blockMap.get(hash);
     }
 
     @Override
-    public StoredBlock getChainHead() throws BlockStoreException {
+    public StoredHeader getChainHead() throws BlockStoreException {
         if (blockMap == null) throw new BlockStoreException("MemoryBlockStore is closed");
         return chainHead;
     }
 
     @Override
-    public void setChainHead(StoredBlock chainHead) throws BlockStoreException {
+    public void setChainHead(StoredHeader chainHead) throws BlockStoreException {
         if (blockMap == null) throw new BlockStoreException("MemoryBlockStore is closed");
         this.chainHead = chainHead;
     }

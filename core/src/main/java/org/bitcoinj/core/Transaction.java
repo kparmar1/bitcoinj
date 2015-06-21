@@ -319,17 +319,17 @@ public class Transaction extends ChildMessage implements Serializable {
      *
      * <p>Sets updatedAt to be the earliest valid block time where this tx was seen.</p>
      * 
-     * @param block     The {@link StoredBlock} in which the transaction has appeared.
+     * @param block     The {@link AbstractStored} in which the transaction has appeared.
      * @param bestChain whether to set the updatedAt timestamp from the block header (only if not already set)
      * @param relativityOffset A number that disambiguates the order of transactions within a block.
      */
-    public void setBlockAppearance(StoredBlock block, boolean bestChain, int relativityOffset) {
-        long blockTime = block.getHeader().getTimeSeconds() * 1000;
+    public void setBlockAppearance(AbstractStored block, boolean bestChain, int relativityOffset) {
+        long blockTime = block.getBlock().getTimeSeconds() * 1000;
         if (bestChain && (updatedAt == null || updatedAt.getTime() == 0 || updatedAt.getTime() > blockTime)) {
             updatedAt = new Date(blockTime);
         }
 
-        addBlockAppearance(block.getHeader().getHash(), relativityOffset);
+        addBlockAppearance(block.getBlock().getHash(), relativityOffset);
 
         if (bestChain) {
             TransactionConfidence transactionConfidence = getConfidence();

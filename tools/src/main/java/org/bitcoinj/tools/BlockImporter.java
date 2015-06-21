@@ -44,9 +44,9 @@ public class BlockImporter {
         
         AbstractBlockChain chain = null;
         if (store instanceof FullPrunedBlockStore)
-            chain = new FullPrunedBlockChain(params, (FullPrunedBlockStore) store);
+            chain = new FullPrunedBlockChain(params, (FullPrunedBlockStore<StoredBlock>) store);
         else
-            chain = new BlockChain(params, store);
+            chain = new BlockChain(params, (BlockStore<StoredHeader>) store);
         
         BlockFileLoader loader = new BlockFileLoader(params, BlockFileLoader.getReferenceClientBlockFileList());
         

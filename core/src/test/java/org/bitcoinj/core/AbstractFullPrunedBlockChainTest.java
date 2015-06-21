@@ -48,7 +48,7 @@ public abstract class AbstractFullPrunedBlockChainTest {
 
     protected NetworkParameters params;
     protected FullPrunedBlockChain chain;
-    protected FullPrunedBlockStore store;
+    protected FullPrunedBlockStore<StoredBlock> store;
     protected Context context;
 
     @Before
@@ -62,7 +62,7 @@ public abstract class AbstractFullPrunedBlockChainTest {
         context = new Context(params);
     }
 
-    public abstract FullPrunedBlockStore createStore(NetworkParameters params, int blockCount)
+    public abstract FullPrunedBlockStore<StoredBlock> createStore(NetworkParameters params, int blockCount)
         throws BlockStoreException;
 
     public abstract void resetStore(FullPrunedBlockStore store) throws BlockStoreException;
@@ -102,7 +102,7 @@ public abstract class AbstractFullPrunedBlockChainTest {
                 log.error("Block didn't match throws flag on block " + block.ruleName);
                 fail();
             }
-            if (!chain.getChainHead().getHeader().getHash().equals(block.hashChainTipAfterBlock)) {
+            if (!chain.getChainHead().getBlock().getHash().equals(block.hashChainTipAfterBlock)) {
                 log.error("New block head didn't match the correct value after block " + block.ruleName);
                 fail();
             }

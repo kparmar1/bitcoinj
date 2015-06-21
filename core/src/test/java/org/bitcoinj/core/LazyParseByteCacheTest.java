@@ -64,7 +64,7 @@ public class LazyParseByteCacheTest {
 
     private Context context;
     private Wallet wallet;
-    private BlockStore blockStore;
+    private BlockStore<StoredHeader> blockStore;
     private NetworkParameters unitTestParams;
     
     private byte[] b1Bytes;

@@ -21,13 +21,13 @@ import java.util.List;
 /**
  * Default no-op implementation of {@link BlockChainListener}.
  */
-public class AbstractBlockChainListener implements BlockChainListener {
+public class AbstractBlockChainListener<T extends AbstractStored> implements BlockChainListener<T> {
     @Override
-    public void notifyNewBestBlock(StoredBlock block) throws VerificationException {
+    public void notifyNewBestBlock(T block) throws VerificationException {
     }
 
     @Override
-    public void reorganize(StoredBlock splitPoint, List<StoredBlock> oldBlocks, List<StoredBlock> newBlocks) throws VerificationException {
+    public void reorganize(T splitPoint, List<T> oldBlocks, List<T> newBlocks) throws VerificationException {
     }
 
     @Override
@@ -36,12 +36,12 @@ public class AbstractBlockChainListener implements BlockChainListener {
     }
 
     @Override
-    public void receiveFromBlock(Transaction tx, StoredBlock block, BlockChain.NewBlockType blockType,
+    public void receiveFromBlock(Transaction tx, T block, BlockChain.NewBlockType blockType,
                                  int relativityOffset) throws VerificationException {
     }
 
     @Override
-    public boolean notifyTransactionIsInBlock(Sha256Hash txHash, StoredBlock block, BlockChain.NewBlockType blockType,
+    public boolean notifyTransactionIsInBlock(Sha256Hash txHash, T block, BlockChain.NewBlockType blockType,
                                               int relativityOffset) throws VerificationException {
         return false;
     }

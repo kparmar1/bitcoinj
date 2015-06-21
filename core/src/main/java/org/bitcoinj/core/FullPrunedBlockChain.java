@@ -44,52 +44,52 @@ import static com.google.common.base.Preconditions.checkState;
  * serve the full block chain to other clients, but it nevertheless provides the same security guarantees as a regular
  * Satoshi client does.</p>
  */
-public class FullPrunedBlockChain extends AbstractBlockChain {
+public class FullPrunedBlockChain extends AbstractBlockChain<StoredBlock> {
     private static final Logger log = LoggerFactory.getLogger(FullPrunedBlockChain.class);
 
     /**
      * Keeps a map of block hashes to StoredBlocks.
      */
-    protected final FullPrunedBlockStore blockStore;
+    protected final FullPrunedBlockStore<StoredBlock> blockStore;
 
     // Whether or not to execute scriptPubKeys before accepting a transaction (i.e. check signatures).
     private boolean runScripts = true;
 
     /**
      * Constructs a block chain connected to the given wallet and store. To obtain a {@link Wallet} you can construct
-     * one from scratch, or you can deserialize a saved wallet from disk using {@link Wallet#loadFromFile(java.io.File)}
+     * one from scratch, or you can deserialize a saved wallet from disk using {@link Wallet#loadFromFile(java.io.File, WalletExtension...)}
      */
-    public FullPrunedBlockChain(Context context, Wallet wallet, FullPrunedBlockStore blockStore) throws BlockStoreException {
-        this(context, new ArrayList<BlockChainListener>(), blockStore);
+    public FullPrunedBlockChain(Context context, Wallet wallet, FullPrunedBlockStore<StoredBlock> blockStore) throws BlockStoreException {
+        this(context, new ArrayList<BlockChainListener<StoredBlock>>(), blockStore);
         addWallet(wallet);
     }
 
     /**
      * Constructs a block chain connected to the given wallet and store. To obtain a {@link Wallet} you can construct
-     * one from scratch, or you can deserialize a saved wallet from disk using {@link Wallet#loadFromFile(java.io.File)}
+     * one from scratch, or you can deserialize a saved wallet from disk using {@link Wallet#loadFromFile(java.io.File, WalletExtension...)}
      */
-    public FullPrunedBlockChain(NetworkParameters params, Wallet wallet, FullPrunedBlockStore blockStore) throws BlockStoreException {
+    public FullPrunedBlockChain(NetworkParameters params, Wallet wallet, FullPrunedBlockStore<StoredBlock> blockStore) throws BlockStoreException {
         this(Context.getOrCreate(params), wallet, blockStore);
     }
 
     /**
      * Constructs a block chain connected to the given store.
      */
-    public FullPrunedBlockChain(Context context, FullPrunedBlockStore blockStore) throws BlockStoreException {
-        this(context, new ArrayList<BlockChainListener>(), blockStore);
+    public FullPrunedBlockChain(Context context, FullPrunedBlockStore<StoredBlock> blockStore) throws BlockStoreException {
+        this(context, new ArrayList<BlockChainListener<StoredBlock>>(), blockStore);
     }
 
     /**
      * See {@link #FullPrunedBlockChain(Context, Wallet, FullPrunedBlockStore)}
      */
-    public FullPrunedBlockChain(NetworkParameters params, FullPrunedBlockStore blockStore) throws BlockStoreException {
+    public FullPrunedBlockChain(NetworkParameters params, FullPrunedBlockStore<StoredBlock> blockStore) throws BlockStoreException {
         this(Context.getOrCreate(params), blockStore);
     }
 
     /**
      * Constructs a block chain connected to the given list of wallets and a store.
      */
-    public FullPrunedBlockChain(Context context, List<BlockChainListener> listeners, FullPrunedBlockStore blockStore) throws BlockStoreException {
+    public FullPrunedBlockChain(Context context, List<BlockChainListener<StoredBlock>> listeners, FullPrunedBlockStore<StoredBlock> blockStore) throws BlockStoreException {
         super(context, listeners, blockStore);
         this.blockStore = blockStore;
         // Ignore upgrading for now
@@ -99,8 +99,8 @@ public class FullPrunedBlockChain extends AbstractBlockChain {
     /**
      * See {@link #FullPrunedBlockChain(Context, List, FullPrunedBlockStore)}
      */
-    public FullPrunedBlockChain(NetworkParameters params, List<BlockChainListener> listeners,
-                                FullPrunedBlockStore blockStore) throws BlockStoreException {
+    public FullPrunedBlockChain(NetworkParameters params, List<BlockChainListener<StoredBlock>> listeners,
+                                FullPrunedBlockStore<StoredBlock> blockStore) throws BlockStoreException {
         this(Context.getOrCreate(params), listeners, blockStore);
     }
 
@@ -108,7 +108,7 @@ public class FullPrunedBlockChain extends AbstractBlockChain {
     protected StoredBlock addToBlockStore(StoredBlock storedPrev, Block header, TransactionOutputChanges txOutChanges)
             throws BlockStoreException, VerificationException {
         StoredBlock newBlock = storedPrev.build(header);
-        blockStore.put(newBlock, new StoredUndoableBlock(newBlock.getHeader().getHash(), txOutChanges));
+        blockStore.put(newBlock, new StoredUndoableBlock(newBlock.getBlock().getHash(), txOutChanges));
         return newBlock;
     }
 
@@ -116,7 +116,7 @@ public class FullPrunedBlockChain extends AbstractBlockChain {
     protected StoredBlock addToBlockStore(StoredBlock storedPrev, Block block)
             throws BlockStoreException, VerificationException {
         StoredBlock newBlock = storedPrev.build(block);
-        blockStore.put(newBlock, new StoredUndoableBlock(newBlock.getHeader().getHash(), block.transactions));
+        blockStore.put(newBlock, new StoredUndoableBlock(newBlock.getBlock().getHash(), block.transactions));
         return newBlock;
     }
 
@@ -339,22 +339,23 @@ public class FullPrunedBlockChain extends AbstractBlockChain {
         return new TransactionOutputChanges(txOutsCreated, txOutsSpent);
     }
 
-    @Override
+
     /**
      * Used during reorgs to connect a block previously on a fork
      */
+    @Override
     protected synchronized TransactionOutputChanges connectTransactions(StoredBlock newBlock)
             throws VerificationException, BlockStoreException, PrunedException {
         checkState(lock.isHeldByCurrentThread());
-        if (!params.passesCheckpoint(newBlock.getHeight(), newBlock.getHeader().getHash()))
+        if (!params.passesCheckpoint(newBlock.getHeight(), newBlock.getBlock().getHash()))
             throw new VerificationException("Block failed checkpoint lockin at " + newBlock.getHeight());
 
         blockStore.beginDatabaseBatchWrite();
-        StoredUndoableBlock block = blockStore.getUndoBlock(newBlock.getHeader().getHash());
+        StoredUndoableBlock block = blockStore.getUndoBlock(newBlock.getBlock().getHash());
         if (block == null) {
             // We're trying to re-org too deep and the data needed has been deleted.
             blockStore.abortDatabaseBatchWrite();
-            throw new PrunedException(newBlock.getHeader().getHash());
+            throw new PrunedException(newBlock.getBlock().getHash());
         }
         TransactionOutputChanges txOutChanges;
         try {
@@ -364,7 +365,7 @@ public class FullPrunedBlockChain extends AbstractBlockChain {
                 LinkedList<UTXO> txOutsCreated = new LinkedList<UTXO>();
                 long sigOps = 0;
                 final Set<VerifyFlag> verifyFlags = EnumSet.noneOf(VerifyFlag.class);
-                if (newBlock.getHeader().getTimeSeconds() >= NetworkParameters.BIP16_ENFORCE_TIME)
+                if (newBlock.getBlock().getTimeSeconds() >= NetworkParameters.BIP16_ENFORCE_TIME)
                     verifyFlags.add(VerifyFlag.P2SH);
                 if (!params.isCheckpoint(newBlock.getHeight())) {
                     for (Transaction tx : transactions) {
@@ -441,7 +442,7 @@ public class FullPrunedBlockChain extends AbstractBlockChain {
                     }
                 }
                 if (totalFees.compareTo(params.getMaxMoney()) > 0 ||
-                        newBlock.getHeader().getBlockInflation(newBlock.getHeight()).add(totalFees).compareTo(coinbaseValue) < 0)
+                        newBlock.getBlock().getBlockInflation(newBlock.getHeight()).add(totalFees).compareTo(coinbaseValue) < 0)
                     throw new VerificationException("Transaction fees out of range");
                 txOutChanges = new TransactionOutputChanges(txOutsCreated, txOutsSpent);
                 for (Future<VerificationException> future : listScriptVerificationResults) {
@@ -491,8 +492,8 @@ public class FullPrunedBlockChain extends AbstractBlockChain {
         checkState(lock.isHeldByCurrentThread());
         blockStore.beginDatabaseBatchWrite();
         try {
-            StoredUndoableBlock undoBlock = blockStore.getUndoBlock(oldBlock.getHeader().getHash());
-            if (undoBlock == null) throw new PrunedException(oldBlock.getHeader().getHash());
+            StoredUndoableBlock undoBlock = blockStore.getUndoBlock(oldBlock.getBlock().getHash());
+            if (undoBlock == null) throw new PrunedException(oldBlock.getBlock().getHash());
             TransactionOutputChanges txOutChanges = undoBlock.getTxOutChanges();
             for (UTXO out : txOutChanges.txOutsSpent)
                 blockStore.addUnspentTransactionOutput(out);

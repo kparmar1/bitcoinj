@@ -30,7 +30,7 @@ public class PostgresFullPrunedBlockChainTest extends AbstractFullPrunedBlockCha
     }
 
     @Override
-    public FullPrunedBlockStore createStore(NetworkParameters params, int blockCount)
+    public FullPrunedBlockStore<StoredBlock> createStore(NetworkParameters params, int blockCount)
             throws BlockStoreException {
         if(useSchema) {
             return new PostgresFullPrunedBlockStore(params, blockCount, DB_HOSTNAME, DB_NAME, DB_USERNAME, DB_PASSWORD, DB_SCHEMA);

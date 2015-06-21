@@ -25,23 +25,23 @@ import java.util.List;
  * this class using JNI on the native side, thus several instances of this can point to different actual
  * native implementations.
  */
-public class NativeBlockChainListener implements BlockChainListener {
+public class NativeBlockChainListener<T extends AbstractStored> implements BlockChainListener<T> {
     public long ptr;
 
     @Override
-    public native void notifyNewBestBlock(StoredBlock block) throws VerificationException;
+    public native void notifyNewBestBlock(T block) throws VerificationException;
 
     @Override
-    public native void reorganize(StoredBlock splitPoint, List<StoredBlock> oldBlocks, List<StoredBlock> newBlocks) throws VerificationException;
+    public native void reorganize(T splitPoint, List<T> oldBlocks, List<T> newBlocks) throws VerificationException;
 
     @Override
     public native boolean isTransactionRelevant(Transaction tx) throws ScriptException;
 
     @Override
-    public native void receiveFromBlock(Transaction tx, StoredBlock block, BlockChain.NewBlockType blockType,
+    public native void receiveFromBlock(Transaction tx, T block, BlockChain.NewBlockType blockType,
                                         int relativityOffset) throws VerificationException;
 
     @Override
-    public native boolean notifyTransactionIsInBlock(Sha256Hash txHash, StoredBlock block, BlockChain.NewBlockType blockType,
+    public native boolean notifyTransactionIsInBlock(Sha256Hash txHash, T block, BlockChain.NewBlockType blockType,
                                                      int relativityOffset) throws VerificationException;
 }

@@ -773,7 +773,7 @@ public class PeerGroupTest extends TestWithPeerGroup {
         // Make some transactions and blocks that send money to the wallet thus using up all the keys.
         List<Block> blocks = Lists.newArrayList();
         Coin expectedBalance = Coin.ZERO;
-        Block prev = blockStore.getChainHead().getHeader();
+        Block prev = blockStore.getChainHead().getBlock();
         for (ECKey key1 : keys) {
             Address addr = key1.toAddress(params);
             Block next = FakeTxBuilder.makeSolvedTestBlock(prev, FakeTxBuilder.createFakeTx(params, Coin.FIFTY_COINS, addr));
@@ -793,7 +793,7 @@ public class PeerGroupTest extends TestWithPeerGroup {
         assertNotEquals(epoch, wallet.keychain.getCombinedKeyLookaheadEpochs());
         // 4th block was end of the lookahead zone and thus was discarded, so we got 3 blocks worth of money (50 each).
         assertEquals(Coin.FIFTY_COINS.multiply(3), wallet.getBalance());
-        assertEquals(exhaustionPoint.getPrevBlockHash(), blockChain.getChainHead().getHeader().getHash());
+        assertEquals(exhaustionPoint.getPrevBlockHash(), blockChain.getChainHead().getBlock().getHash());
 
         // Await the new filter.
         peerGroup.waitForJobQueue();
@@ -824,7 +824,7 @@ public class PeerGroupTest extends TestWithPeerGroup {
         pingAndWait(p1);
 
         assertEquals(expectedBalance, wallet.getBalance());
-        assertEquals(blocks.get(blocks.size() - 1).getHash(), blockChain.getChainHead().getHeader().getHash());
+        assertEquals(blocks.get(blocks.size() - 1).getHash(), blockChain.getChainHead().getBlock().getHash());
     }
 
     private void filterAndSend(InboundMessageQueuer p1, List<Block> blocks, BloomFilter filter) {

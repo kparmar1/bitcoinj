@@ -43,7 +43,7 @@ public class TestWithWallet {
     protected Address myAddress;
     protected Wallet wallet;
     protected BlockChain chain;
-    protected BlockStore blockStore;
+    protected BlockStore<StoredHeader> blockStore;
 
     public void setUp() throws Exception {
         BriefLogFormatter.init();
@@ -69,9 +69,9 @@ public class TestWithWallet {
                 wallet.receivePending(tx, null);
         } else {
             FakeTxBuilder.BlockPair bp = createFakeBlock(blockStore, tx);
-            wallet.receiveFromBlock(tx, bp.storedBlock, type, 0);
+            wallet.receiveFromBlock(tx, bp.storedHeader, type, 0);
             if (type == AbstractBlockChain.NewBlockType.BEST_CHAIN)
-                wallet.notifyNewBestBlock(bp.storedBlock);
+                wallet.notifyNewBestBlock(bp.storedHeader);
         }
         return wallet.getTransaction(tx.getHash());  // Can be null if tx is a double spend that's otherwise irrelevant.
     }

@@ -232,10 +232,10 @@ class TransactionalMultiKeyHashMap<UniqueKeyType, MultiKeyType, ValueType> {
 }
 
 /**
- * Keeps {@link StoredBlock}s, {@link StoredUndoableBlock}s and {@link org.bitcoinj.core.UTXO}s in memory.
+ * Keeps {@link org.bitcoinj.core.StoredHeader}s, {@link StoredUndoableBlock}s and {@link org.bitcoinj.core.UTXO}s in memory.
  * Used primarily for unit testing.
  */
-public class MemoryFullPrunedBlockStore implements FullPrunedBlockStore {
+public class MemoryFullPrunedBlockStore implements FullPrunedBlockStore<StoredBlock> {
     protected static class StoredBlockAndWasUndoableFlag {
         public StoredBlock block;
         public boolean wasUndoable;
@@ -280,14 +280,14 @@ public class MemoryFullPrunedBlockStore implements FullPrunedBlockStore {
     @Override
     public synchronized void put(StoredBlock block) throws BlockStoreException {
         Preconditions.checkNotNull(blockMap, "MemoryFullPrunedBlockStore is closed");
-        Sha256Hash hash = block.getHeader().getHash();
+        Sha256Hash hash = block.getBlock().getHash();
         blockMap.put(hash, new StoredBlockAndWasUndoableFlag(block, false));
     }
     
     @Override
     public synchronized void put(StoredBlock storedBlock, StoredUndoableBlock undoableBlock) throws BlockStoreException {
         Preconditions.checkNotNull(blockMap, "MemoryFullPrunedBlockStore is closed");
-        Sha256Hash hash = storedBlock.getHeader().getHash();
+        Sha256Hash hash = storedBlock.getBlock().getHash();
         fullBlockMap.put(hash, storedBlock.getHeight(), undoableBlock);
         blockMap.put(hash, new StoredBlockAndWasUndoableFlag(storedBlock, true));
     }

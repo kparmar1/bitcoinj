@@ -20,7 +20,6 @@ package org.bitcoinj.core;
 import com.google.common.annotations.*;
 import com.google.common.base.*;
 import com.google.common.base.Objects;
-import com.google.common.base.Objects.*;
 import com.google.common.collect.*;
 import com.google.common.primitives.*;
 import com.google.common.util.concurrent.*;
@@ -88,7 +87,7 @@ import static com.google.common.base.Preconditions.*;
  * {@link Wallet#autosaveToFile(java.io.File, long, java.util.concurrent.TimeUnit, org.bitcoinj.wallet.WalletFiles.Listener)}
  * for more information about this.</p>
  */
-public class Wallet extends BaseTaggableObject implements Serializable, BlockChainListener, PeerFilterProvider, KeyBag, TransactionBag {
+public class Wallet extends BaseTaggableObject implements Serializable, BlockChainListener<AbstractStored>, PeerFilterProvider, KeyBag, TransactionBag {
     private static final Logger log = LoggerFactory.getLogger(Wallet.class);
     private static final long serialVersionUID = 2L;
     private static final int MINIMUM_BLOOM_DATA_LENGTH = 8;
@@ -1546,9 +1545,7 @@ public class Wallet extends BaseTaggableObject implements Serializable, BlockCha
      * block might change which chain is best causing a reorganize. A re-org can totally change our balance!
      */
     @Override
-    public boolean notifyTransactionIsInBlock(Sha256Hash txHash, StoredBlock block,
-                                              BlockChain.NewBlockType blockType,
-                                              int relativityOffset) throws VerificationException {
+    public boolean notifyTransactionIsInBlock(Sha256Hash txHash, AbstractStored block, AbstractBlockChain.NewBlockType blockType, int relativityOffset) throws VerificationException {
         lock.lock();
         try {
             Transaction tx = transactions.get(txHash);
@@ -1765,9 +1762,7 @@ public class Wallet extends BaseTaggableObject implements Serializable, BlockCha
      * block might change which chain is best causing a reorganize. A re-org can totally change our balance!
      */
     @Override
-    public void receiveFromBlock(Transaction tx, StoredBlock block,
-                                 BlockChain.NewBlockType blockType,
-                                 int relativityOffset) throws VerificationException {
+    public void receiveFromBlock(Transaction tx, AbstractStored block, BlockChain.NewBlockType blockType, int relativityOffset) throws VerificationException {
         lock.lock();
         try {
             receive(tx, block, blockType, relativityOffset);
@@ -1776,7 +1771,7 @@ public class Wallet extends BaseTaggableObject implements Serializable, BlockCha
         }
     }
 
-    private void receive(Transaction tx, StoredBlock block, BlockChain.NewBlockType blockType,
+    private void receive(Transaction tx, AbstractStored block, BlockChain.NewBlockType blockType,
                          int relativityOffset) throws VerificationException {
         // Runs in a peer thread.
         checkState(lock.isHeldByCurrentThread());
@@ -1791,7 +1786,7 @@ public class Wallet extends BaseTaggableObject implements Serializable, BlockCha
 
         log.info("Received tx{} for {}: {} [{}] in block {}", sideChain ? " on a side chain" : "",
                 valueDifference.toFriendlyString(), tx.getHashAsString(), relativityOffset,
-                block != null ? block.getHeader().getHash() : "(unit test)");
+                block != null ? block.getBlock().getHash() : "(unit test)");
 
         // Inform the key chains that the issued keys were observed in a transaction, so they know to
         // calculate more keys for the next Bloom filters.
@@ -1909,16 +1904,16 @@ public class Wallet extends BaseTaggableObject implements Serializable, BlockCha
     /**
      * <p>Called by the {@link BlockChain} when a new block on the best chain is seen, AFTER relevant wallet
      * transactions are extracted and sent to us UNLESS the new block caused a re-org, in which case this will
-     * not be called (the {@link Wallet#reorganize(StoredBlock, java.util.List, java.util.List)} method will
+     * not be called (the {@link Wallet#reorganize(AbstractStored, java.util.List, java.util.List)}
      * call this one in that case).</p>
      * <p/>
      * <p>Used to update confidence data in each transaction and last seen block hash. Triggers auto saving.
      * Invokes the onWalletChanged event listener if there were any affected transactions.</p>
      */
     @Override
-    public void notifyNewBestBlock(StoredBlock block) throws VerificationException {
+    public void notifyNewBestBlock(AbstractStored block) throws VerificationException {
         // Check to see if this block has been seen before.
-        Sha256Hash newBlockHash = block.getHeader().getHash();
+        Sha256Hash newBlockHash = block.getBlock().getHash();
         if (newBlockHash.equals(getLastBlockSeenHash()))
             return;
         lock.lock();
@@ -1926,7 +1921,7 @@ public class Wallet extends BaseTaggableObject implements Serializable, BlockCha
             // Store the new block hash.
             setLastBlockSeenHash(newBlockHash);
             setLastBlockSeenHeight(block.getHeight());
-            setLastBlockSeenTimeSecs(block.getHeader().getTimeSeconds());
+            setLastBlockSeenTimeSecs(block.getBlock().getTimeSeconds());
             // Notify all the BUILDING transactions of the new block.
             // This is so that they can update their depth.
             Set<Transaction> transactions = getTransactions(true);
@@ -2555,7 +2550,7 @@ public class Wallet extends BaseTaggableObject implements Serializable, BlockCha
 
     /**
      * Prepares the wallet for a blockchain replay. Removes all transactions (as they would get in the way of the
-     * replay) and makes the wallet think it has never seen a block. {@link WalletEventListener#onWalletChanged()} will
+     * replay) and makes the wallet think it has never seen a block. {@link WalletEventListener#onWalletChanged(Wallet)} will
      * be fired.
      */
     public void reset() {
@@ -3388,7 +3383,7 @@ public class Wallet extends BaseTaggableObject implements Serializable, BlockCha
         @Override
         public String toString() {
             // print only the user-settable fields
-            ToStringHelper helper = Objects.toStringHelper(this).omitNullValues();
+            Objects.ToStringHelper helper = Objects.toStringHelper(this).omitNullValues();
             helper.add("emptyWallet", emptyWallet);
             helper.add("changeAddress", changeAddress);
             helper.add("fee", fee);
@@ -4068,7 +4063,7 @@ public class Wallet extends BaseTaggableObject implements Serializable, BlockCha
      * <p>The oldBlocks/newBlocks lists are ordered height-wise from top first to bottom last.</p>
      */
     @Override
-    public void reorganize(StoredBlock splitPoint, List<StoredBlock> oldBlocks, List<StoredBlock> newBlocks) throws VerificationException {
+    public void reorganize(AbstractStored splitPoint, List<AbstractStored> oldBlocks, List<AbstractStored> newBlocks) throws VerificationException {
         lock.lock();
         try {
             // This runs on any peer thread with the block chain locked.
@@ -4105,13 +4100,13 @@ public class Wallet extends BaseTaggableObject implements Serializable, BlockCha
 
             List<Sha256Hash> oldBlockHashes = new ArrayList<Sha256Hash>(oldBlocks.size());
             log.info("Old part of chain (top to bottom):");
-            for (StoredBlock b : oldBlocks) {
-                log.info("  {}", b.getHeader().getHashAsString());
-                oldBlockHashes.add(b.getHeader().getHash());
+            for (AbstractStored b : oldBlocks) {
+                log.info("  {}", b.getBlock().getHashAsString());
+                oldBlockHashes.add(b.getBlock().getHash());
             }
             log.info("New part of chain (top to bottom):");
-            for (StoredBlock b : newBlocks) {
-                log.info("  {}", b.getHeader().getHashAsString());
+            for (AbstractStored b : newBlocks) {
+                log.info("  {}", b.getBlock().getHashAsString());
             }
 
             Collections.reverse(newBlocks);  // Need bottom-to-top but we get top-to-bottom.
@@ -4179,15 +4174,15 @@ public class Wallet extends BaseTaggableObject implements Serializable, BlockCha
             subtractDepth(depthToSubtract, dead.values());
 
             // The effective last seen block is now the split point so set the lastSeenBlockHash.
-            setLastBlockSeenHash(splitPoint.getHeader().getHash());
+            setLastBlockSeenHash(splitPoint.getBlock().getHash());
 
             // For each block in the new chain, work forwards calling receive() and notifyNewBestBlock().
             // This will pull them back out of the pending pool, or if the tx didn't appear in the old chain and
             // does appear in the new chain, will treat it as such and possibly kill pending transactions that
             // conflict.
-            for (StoredBlock block : newBlocks) {
-                log.info("Replaying block {}", block.getHeader().getHashAsString());
-                for (TxOffsetPair pair : mapBlockTx.get(block.getHeader().getHash())) {
+            for (AbstractStored block : newBlocks) {
+                log.info("Replaying block {}", block.getBlock().getHashAsString());
+                for (TxOffsetPair pair : mapBlockTx.get(block.getBlock().getHash())) {
                     log.info("  tx {}", pair.tx.getHash());
                     try {
                         receive(pair.tx, block, BlockChain.NewBlockType.BEST_CHAIN, pair.offset);

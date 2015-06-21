@@ -46,7 +46,7 @@ public class TestWithNetworkConnections {
     public static final int PEER_SERVERS = 5;
     protected final NetworkParameters params = UnitTestParams.get();
     protected Context context;
-    protected BlockStore blockStore;
+    protected BlockStore<StoredHeader> blockStore;
     protected BlockChain blockChain;
     protected Wallet wallet;
     protected ECKey key;
@@ -78,7 +78,7 @@ public class TestWithNetworkConnections {
         setUp(new MemoryBlockStore(UnitTestParams.get()));
     }
     
-    public void setUp(BlockStore blockStore) throws Exception {
+    public void setUp(BlockStore<StoredHeader> blockStore) throws Exception {
         BriefLogFormatter.init();
 
         context = new Context(params);

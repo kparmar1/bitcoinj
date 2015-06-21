@@ -18,7 +18,6 @@ package org.bitcoinj.store;
 
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.Sha256Hash;
-import org.bitcoinj.core.StoredBlock;
 
 /**
  * An implementor of BlockStore saves StoredBlock objects to disk. Different implementations store them in
@@ -30,32 +29,32 @@ import org.bitcoinj.core.StoredBlock;
  *
  * BlockStores are thread safe.
  */
-public interface BlockStore {
+public interface BlockStore<T> {
     /**
      * Saves the given block header+extra data. The key isn't specified explicitly as it can be calculated from the
      * StoredBlock directly. Can throw if there is a problem with the underlying storage layer such as running out of
      * disk space.
      */
-    void put(StoredBlock block) throws BlockStoreException;
+    void put(T block) throws BlockStoreException;
 
     /**
      * Returns the StoredBlock given a hash. The returned values block.getHash() method will be equal to the
      * parameter. If no such block is found, returns null.
      */
-    StoredBlock get(Sha256Hash hash) throws BlockStoreException;
+    T get(Sha256Hash hash) throws BlockStoreException;
 
     /**
-     * Returns the {@link StoredBlock} that represents the top of the chain of greatest total work. Note that this
+     * Returns the {@link org.bitcoinj.core.StoredHeader} that represents the top of the chain of greatest total work. Note that this
      * can be arbitrarily expensive, you probably should use {@link org.bitcoinj.core.BlockChain#getChainHead()}
      * or perhaps {@link org.bitcoinj.core.BlockChain#getBestChainHeight()} which will run in constant time and
      * not take any heavyweight locks.
      */
-    StoredBlock getChainHead() throws BlockStoreException;
+    T getChainHead() throws BlockStoreException;
 
     /**
-     * Sets the {@link StoredBlock} that represents the top of the chain of greatest total work.
+     * Sets the {@link org.bitcoinj.core.StoredHeader} that represents the top of the chain of greatest total work.
      */
-    void setChainHead(StoredBlock chainHead) throws BlockStoreException;
+    void setChainHead(T chainHead) throws BlockStoreException;
     
     /** Closes the store. */
     void close() throws BlockStoreException;

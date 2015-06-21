@@ -32,26 +32,26 @@ import java.util.List;
  * choice to use for programs that have limited resources as it won't verify transactions signatures or attempt to store
  * all of the block chain. Really, this class should be called SPVBlockChain but for backwards compatibility it is not.
  */
-public class BlockChain extends AbstractBlockChain {
+public class BlockChain extends AbstractBlockChain<StoredHeader> {
     /** Keeps a map of block hashes to StoredBlocks. */
-    protected final BlockStore blockStore;
+    protected final BlockStore<StoredHeader> blockStore;
 
     /**
      * <p>Constructs a BlockChain connected to the given wallet and store. To obtain a {@link Wallet} you can construct
-     * one from scratch, or you can deserialize a saved wallet from disk using {@link Wallet#loadFromFile(java.io.File)}
+     * one from scratch, or you can deserialize a saved wallet from disk using {@link Wallet#loadFromFile(java.io.File, WalletExtension...)}
      * </p>
      *
      * <p>For the store, you should use {@link org.bitcoinj.store.SPVBlockStore} or you could also try a
      * {@link org.bitcoinj.store.MemoryBlockStore} if you want to hold all headers in RAM and don't care about
      * disk serialization (this is rare).</p>
      */
-    public BlockChain(Context context, Wallet wallet, BlockStore blockStore) throws BlockStoreException {
-        this(context, new ArrayList<BlockChainListener>(), blockStore);
+    public BlockChain(Context context, Wallet wallet, BlockStore<StoredHeader> blockStore) throws BlockStoreException {
+        this(context, new ArrayList<BlockChainListener<StoredHeader>>(), blockStore);
         addWallet(wallet);
     }
 
     /** See {@link #BlockChain(Context, Wallet, BlockStore)}} */
-    public BlockChain(NetworkParameters params, Wallet wallet, BlockStore blockStore) throws BlockStoreException {
+    public BlockChain(NetworkParameters params, Wallet wallet, BlockStore<StoredHeader> blockStore) throws BlockStoreException {
         this(Context.getOrCreate(params), wallet, blockStore);
     }
 
@@ -59,40 +59,40 @@ public class BlockChain extends AbstractBlockChain {
      * Constructs a BlockChain that has no wallet at all. This is helpful when you don't actually care about sending
      * and receiving coins but rather, just want to explore the network data structures.
      */
-    public BlockChain(Context context, BlockStore blockStore) throws BlockStoreException {
-        this(context, new ArrayList<BlockChainListener>(), blockStore);
+    public BlockChain(Context context, BlockStore<StoredHeader> blockStore) throws BlockStoreException {
+        this(context, new ArrayList<BlockChainListener<StoredHeader>>(), blockStore);
     }
 
     /** See {@link #BlockChain(Context, BlockStore)} */
-    public BlockChain(NetworkParameters params, BlockStore blockStore) throws BlockStoreException {
-        this(params, new ArrayList<BlockChainListener>(), blockStore);
+    public BlockChain(NetworkParameters params, BlockStore<StoredHeader> blockStore) throws BlockStoreException {
+        this(params, new ArrayList<BlockChainListener<StoredHeader>>(), blockStore);
     }
 
     /**
      * Constructs a BlockChain connected to the given list of listeners and a store.
      */
-    public BlockChain(Context params, List<BlockChainListener> wallets, BlockStore blockStore) throws BlockStoreException {
+    public BlockChain(Context params, List<BlockChainListener<StoredHeader>> wallets, BlockStore<StoredHeader> blockStore) throws BlockStoreException {
         super(params, wallets, blockStore);
         this.blockStore = blockStore;
     }
 
     /** See {@link #BlockChain(Context, List, BlockStore)} */
-    public BlockChain(NetworkParameters params, List<BlockChainListener> wallets, BlockStore blockStore) throws BlockStoreException {
+    public BlockChain(NetworkParameters params, List<BlockChainListener<StoredHeader>> wallets, BlockStore<StoredHeader> blockStore) throws BlockStoreException {
         this(Context.getOrCreate(params), wallets, blockStore);
     }
 
     @Override
-    protected StoredBlock addToBlockStore(StoredBlock storedPrev, Block blockHeader, TransactionOutputChanges txOutChanges)
+    protected StoredHeader addToBlockStore(StoredHeader storedPrev, Block blockHeader, TransactionOutputChanges txOutChanges)
             throws BlockStoreException, VerificationException {
-        StoredBlock newBlock = storedPrev.build(blockHeader);
+        StoredHeader newBlock = storedPrev.build(blockHeader);
         blockStore.put(newBlock);
         return newBlock;
     }
     
     @Override
-    protected StoredBlock addToBlockStore(StoredBlock storedPrev, Block blockHeader)
+    protected StoredHeader addToBlockStore(StoredHeader storedPrev, Block blockHeader)
             throws BlockStoreException, VerificationException {
-        StoredBlock newBlock = storedPrev.build(blockHeader);
+        StoredHeader newBlock = storedPrev.build(blockHeader);
         blockStore.put(newBlock);
         return newBlock;
     }
@@ -107,7 +107,7 @@ public class BlockChain extends AbstractBlockChain {
                 return; // nothing to do
 
             // Look for the block we want to be the new chain head
-            StoredBlock newChainHead = blockStore.getChainHead();
+            StoredHeader newChainHead = blockStore.getChainHead();
             while (newChainHead.getHeight() > height) {
                 newChainHead = newChainHead.getPrev(blockStore);
                 if (newChainHead == null)
@@ -134,19 +134,19 @@ public class BlockChain extends AbstractBlockChain {
     }
 
     @Override
-    protected TransactionOutputChanges connectTransactions(StoredBlock newBlock) {
+    protected TransactionOutputChanges connectTransactions(StoredHeader newBlock) {
         // Don't have to do anything as this is only called if(shouldVerifyTransactions())
         throw new UnsupportedOperationException();
     }
 
     @Override
-    protected void disconnectTransactions(StoredBlock block) {
+    protected void disconnectTransactions(StoredHeader block) {
         // Don't have to do anything as this is only called if(shouldVerifyTransactions())
         throw new UnsupportedOperationException();
     }
 
     @Override
-    protected void doSetChainHead(StoredBlock chainHead) throws BlockStoreException {
+    protected void doSetChainHead(StoredHeader chainHead) throws BlockStoreException {
         blockStore.setChainHead(chainHead);
     }
 
@@ -156,7 +156,7 @@ public class BlockChain extends AbstractBlockChain {
     }
 
     @Override
-    protected StoredBlock getStoredBlockInCurrentScope(Sha256Hash hash) throws BlockStoreException {
+    protected StoredHeader getStoredBlockInCurrentScope(Sha256Hash hash) throws BlockStoreException {
         return blockStore.get(hash);
     }
 

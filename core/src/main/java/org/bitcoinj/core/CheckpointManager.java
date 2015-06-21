@@ -46,7 +46,7 @@ import java.util.TreeMap;
 import static com.google.common.base.Preconditions.*;
 
 /**
- * <p>Vends hard-coded {@link StoredBlock}s for blocks throughout the chain. Checkpoints serve two purposes:</p>
+ * <p>Vends hard-coded {@link org.bitcoinj.core.AbstractStored} blocks throughout the chain. Checkpoints serve two purposes:</p>
  * <ol>
  *    <li>They act as a safety mechanism against huge re-orgs that could rewrite large chunks of history, thus
  *    constraining the block chain to be a consensus mechanism only for recent parts of the timeline.</li>
@@ -76,7 +76,7 @@ public class CheckpointManager {
     private static final int MAX_SIGNATURES = 256;
 
     // Map of block header time to data.
-    protected final TreeMap<Long, StoredBlock> checkpoints = new TreeMap<Long, StoredBlock>();
+    protected final TreeMap<Long, StoredHeader> checkpoints = new TreeMap<Long, StoredHeader>();
 
     protected final NetworkParameters params;
     protected final Sha256Hash dataHash;
@@ -118,14 +118,14 @@ public class CheckpointManager {
             digestInputStream.on(true);
             int numCheckpoints = dis.readInt();
             checkState(numCheckpoints > 0);
-            final int size = StoredBlock.COMPACT_SERIALIZED_SIZE;
+            final int size = AbstractStored.COMPACT_SERIALIZED_SIZE;
             ByteBuffer buffer = ByteBuffer.allocate(size);
             for (int i = 0; i < numCheckpoints; i++) {
                 if (dis.read(buffer.array(), 0, size) < size)
                     throw new IOException("Incomplete read whilst loading checkpoints.");
-                StoredBlock block = StoredBlock.deserializeCompact(params, buffer);
+                StoredHeader block = StoredHeader.deserializeCompact(params, buffer);
                 buffer.position(0);
-                checkpoints.put(block.getHeader().getTimeSeconds(), block);
+                checkpoints.put(block.getBlock().getTimeSeconds(), block);
             }
             Sha256Hash dataHash = new Sha256Hash(digest.digest());
             log.info("Read {} checkpoints, hash is {}", checkpoints.size(), dataHash);
@@ -155,7 +155,7 @@ public class CheckpointManager {
             checkState(numCheckpoints > 0);
             // Hash numCheckpoints in a way compatible to the binary format.
             hasher.putBytes(ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(numCheckpoints).array());
-            final int size = StoredBlock.COMPACT_SERIALIZED_SIZE;
+            final int size = AbstractStored.COMPACT_SERIALIZED_SIZE;
             ByteBuffer buffer = ByteBuffer.allocate(size);
             for (int i = 0; i < numCheckpoints; i++) {
                 byte[] bytes = BASE64.decode(reader.readLine());
@@ -163,8 +163,8 @@ public class CheckpointManager {
                 buffer.position(0);
                 buffer.put(bytes);
                 buffer.position(0);
-                StoredBlock block = StoredBlock.deserializeCompact(params, buffer);
-                checkpoints.put(block.getHeader().getTimeSeconds(), block);
+                StoredHeader block = StoredHeader.deserializeCompact(params, buffer);
+                checkpoints.put(block.getBlock().getTimeSeconds(), block);
             }
             HashCode hash = hasher.hash();
             log.info("Read {} checkpoints, hash is {}", checkpoints.size(), hash);
@@ -175,17 +175,17 @@ public class CheckpointManager {
     }
 
     /**
-     * Returns a {@link StoredBlock} representing the last checkpoint before the given time, for example, normally
+     * Returns a {@link StoredHeader} representing the last checkpoint before the given time, for example, normally
      * you would want to know the checkpoint before the earliest wallet birthday.
      */
-    public StoredBlock getCheckpointBefore(long time) {
+    public AbstractStored getCheckpointBefore(long time) {
         try {
             checkArgument(time > params.getGenesisBlock().getTimeSeconds());
             // This is thread safe because the map never changes after creation.
-            Map.Entry<Long, StoredBlock> entry = checkpoints.floorEntry(time);
+            Map.Entry<Long, StoredHeader> entry = checkpoints.floorEntry(time);
             if (entry != null) return entry.getValue();
             Block genesis = params.getGenesisBlock().cloneAsHeader();
-            return new StoredBlock(genesis, genesis.getWork(), 0);
+            return new StoredHeader(genesis, genesis.getWork(), 0);
         } catch (VerificationException e) {
             throw new RuntimeException(e);  // Cannot happen.
         }
@@ -221,7 +221,7 @@ public class CheckpointManager {
 
         BufferedInputStream stream = new BufferedInputStream(checkpoints);
         CheckpointManager manager = new CheckpointManager(params, stream);
-        StoredBlock checkpoint = manager.getCheckpointBefore(time);
+        AbstractStored checkpoint = manager.getCheckpointBefore(time);
         store.put(checkpoint);
         store.setChainHead(checkpoint);
     }

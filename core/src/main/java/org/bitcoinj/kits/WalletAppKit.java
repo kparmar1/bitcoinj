@@ -65,7 +65,7 @@ public class WalletAppKit extends AbstractIdleService {
     protected final String filePrefix;
     protected final NetworkParameters params;
     protected volatile BlockChain vChain;
-    protected volatile BlockStore vStore;
+    protected volatile BlockStore<StoredHeader> vStore;
     protected volatile Wallet vWallet;
     protected volatile PeerGroup vPeerGroup;
 

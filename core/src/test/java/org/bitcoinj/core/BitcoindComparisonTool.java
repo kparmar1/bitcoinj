@@ -49,7 +49,7 @@ public class BitcoindComparisonTool {
     private static final Logger log = LoggerFactory.getLogger(BitcoindComparisonTool.class);
 
     private static NetworkParameters params;
-    private static FullPrunedBlockStore store;
+    private static FullPrunedBlockStore<StoredBlock> store;
     private static FullPrunedBlockChain chain;
     private static Sha256Hash bitcoindChainHead;
     private static volatile InventoryMessage mostRecentInv = null;
@@ -261,7 +261,7 @@ public class BitcoindComparisonTool {
                 if (!threw && block.throwsException) {
                     log.error("ERROR: Block didn't match throws flag on block \"" + block.ruleName + "\"");
                     rulesSinceFirstFail++;
-                } else if (!chain.getChainHead().getHeader().getHash().equals(block.hashChainTipAfterBlock)) {
+                } else if (!chain.getChainHead().getBlock().getHash().equals(block.hashChainTipAfterBlock)) {
                     log.error("ERROR: New block head didn't match the correct value after block \"" + block.ruleName + "\"");
                     rulesSinceFirstFail++;
                 } else if (chain.getChainHead().getHeight() != block.heightAfterBlock) {
@@ -307,7 +307,7 @@ public class BitcoindComparisonTool {
                 locator.add(bitcoindChainHead);
                 bitcoind.sendMessage(new GetHeadersMessage(params, locator, hashTo));
                 bitcoind.ping().get();
-                if (!chain.getChainHead().getHeader().getHash().equals(bitcoindChainHead)) {
+                if (!chain.getChainHead().getBlock().getHash().equals(bitcoindChainHead)) {
                     rulesSinceFirstFail++;
                     log.error("ERROR: bitcoind and bitcoinj acceptance differs on block \"" + block.ruleName + "\"");
                 }

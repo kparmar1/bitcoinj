@@ -14,12 +14,12 @@ import java.nio.*;
  * usage than the {@link SPVBlockStore}. If all you want is a regular wallet you don't need this class: it exists for
  * specialised applications where you need to quickly verify a standalone SPV proof.
  */
-public class LevelDBBlockStore implements BlockStore {
+public class LevelDBBlockStore implements BlockStore<StoredHeader> {
     private static final byte[] CHAIN_HEAD_KEY = "chainhead".getBytes();
 
     private final Context context;
     private DB db;
-    private final ByteBuffer buffer = ByteBuffer.allocate(StoredBlock.COMPACT_SERIALIZED_SIZE);
+    private final ByteBuffer buffer = ByteBuffer.allocate(StoredHeader.COMPACT_SERIALIZED_SIZE);
     private final File path;
 
     /** Creates a LevelDB SPV block store using the JNI/C++ version of LevelDB. */
@@ -55,34 +55,34 @@ public class LevelDBBlockStore implements BlockStore {
         if (db.get(CHAIN_HEAD_KEY) != null)
             return;   // Already initialised.
         Block genesis = context.getParams().getGenesisBlock().cloneAsHeader();
-        StoredBlock storedGenesis = new StoredBlock(genesis, genesis.getWork(), 0);
+        StoredHeader storedGenesis = new StoredHeader(genesis, genesis.getWork(), 0);
         put(storedGenesis);
         setChainHead(storedGenesis);
     }
 
     @Override
-    public synchronized void put(StoredBlock block) throws BlockStoreException {
+    public synchronized void put(StoredHeader block) throws BlockStoreException {
         buffer.clear();
         block.serializeCompact(buffer);
-        db.put(block.getHeader().getHash().getBytes(), buffer.array());
+        db.put(block.getBlock().getHash().getBytes(), buffer.array());
     }
 
     @Override @Nullable
-    public synchronized StoredBlock get(Sha256Hash hash) throws BlockStoreException {
+    public synchronized StoredHeader get(Sha256Hash hash) throws BlockStoreException {
         byte[] bits = db.get(hash.getBytes());
         if (bits == null)
             return null;
-        return StoredBlock.deserializeCompact(context.getParams(), ByteBuffer.wrap(bits));
+        return StoredHeader.deserializeCompact(context.getParams(), ByteBuffer.wrap(bits));
     }
 
     @Override
-    public synchronized StoredBlock getChainHead() throws BlockStoreException {
+    public synchronized StoredHeader getChainHead() throws BlockStoreException {
         return get(new Sha256Hash(db.get(CHAIN_HEAD_KEY)));
     }
 
     @Override
-    public synchronized void setChainHead(StoredBlock chainHead) throws BlockStoreException {
-        db.put(CHAIN_HEAD_KEY, chainHead.getHeader().getHash().getBytes());
+    public synchronized void setChainHead(StoredHeader chainHead) throws BlockStoreException {
+        db.put(CHAIN_HEAD_KEY, chainHead.getBlock().getHash().getBytes());
     }
 
     @Override

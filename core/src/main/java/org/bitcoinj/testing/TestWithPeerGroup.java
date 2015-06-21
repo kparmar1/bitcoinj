@@ -52,7 +52,7 @@ public class TestWithPeerGroup extends TestWithNetworkConnections {
     }
 
     @Override
-    public void setUp(BlockStore blockStore) throws Exception {
+    public void setUp(BlockStore<StoredHeader> blockStore) throws Exception {
         super.setUp(blockStore);
 
         remoteVersionMessage = new VersionMessage(params, 1);

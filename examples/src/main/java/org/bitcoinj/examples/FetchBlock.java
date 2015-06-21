@@ -35,7 +35,7 @@ public class FetchBlock {
         System.out.println("Connecting to node");
         final NetworkParameters params = TestNet3Params.get();
 
-        BlockStore blockStore = new MemoryBlockStore(params);
+        BlockStore<StoredHeader> blockStore = new MemoryBlockStore(params);
         BlockChain chain = new BlockChain(params, blockStore);
         PeerGroup peerGroup = new PeerGroup(params, chain);
         peerGroup.start();

@@ -23,16 +23,16 @@ import java.util.List;
  * happen that modify the state of the chain, for example: new blocks being received, a re-org occurring, or the
  * best chain head changing.
  */
-public interface BlockChainListener {
+public interface BlockChainListener<T extends AbstractStored> {
     /**
      * Called when a new block on the best chain is seen, after relevant transactions are extracted and sent to
-     * us via either {@link #receiveFromBlock(Transaction, StoredBlock, org.bitcoinj.core.BlockChain.NewBlockType, int)}
-     * or {@link #notifyTransactionIsInBlock(Sha256Hash, StoredBlock, org.bitcoinj.core.BlockChain.NewBlockType, int)}.
+     * us via either {@link #receiveFromBlock(Transaction, AbstractStored, org.bitcoinj.core.BlockChain.NewBlockType, int)}
+     * or {@link #notifyTransactionIsInBlock(Sha256Hash, AbstractStored, org.bitcoinj.core.BlockChain.NewBlockType, int)}
      * If this block is causing a re-organise to a new chain, this method is NOT called even though the block may be
      * the new best block: your reorganize implementation is expected to do whatever would normally be done do for a new
      * best block in this case.
      */
-    void notifyNewBestBlock(StoredBlock block) throws VerificationException;
+    void notifyNewBestBlock(T block) throws VerificationException;
 
     /**
      * Called by the {@link BlockChain} when the best chain (representing total work done) has changed. In this case,
@@ -42,8 +42,8 @@ public interface BlockChainListener {
      *
      * The oldBlocks/newBlocks lists are ordered height-wise from top first to bottom last (i.e. newest blocks first).
      */
-    void reorganize(StoredBlock splitPoint, List<StoredBlock> oldBlocks,
-                    List<StoredBlock> newBlocks) throws VerificationException;
+    void reorganize(T splitPoint, List<T> oldBlocks,
+                    List<T> newBlocks) throws VerificationException;
 
     /**
      * Returns true if the given transaction is interesting to the listener. If yes, then the transaction will
@@ -67,7 +67,7 @@ public interface BlockChainListener {
      * that a transaction occurred at, so the relativity count is not reflective of anything in an absolute sense but
      * rather exists only to order the transaction relative to the others.</p>
      */
-    void receiveFromBlock(Transaction tx, StoredBlock block,
+    void receiveFromBlock(Transaction tx, T block,
                           BlockChain.NewBlockType blockType,
                           int relativityOffset) throws VerificationException;
     
@@ -89,7 +89,7 @@ public interface BlockChainListener {
      *
      * @return whether the transaction is known about i.e. was considered relevant previously.
      */
-    boolean notifyTransactionIsInBlock(Sha256Hash txHash, StoredBlock block,
+    boolean notifyTransactionIsInBlock(Sha256Hash txHash, T block,
                                        BlockChain.NewBlockType blockType,
                                        int relativityOffset) throws VerificationException;
 }

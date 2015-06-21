@@ -47,10 +47,10 @@ public class BlockChainTest {
 
     private Wallet wallet;
     private BlockChain chain;
-    private BlockStore blockStore;
+    private BlockStore<StoredHeader> blockStore;
     private Address coinbaseTo;
     private NetworkParameters unitTestParams;
-    private final StoredBlock[] block = new StoredBlock[1];
+    private final AbstractStored[] block = new AbstractStored[1];
     private Transaction coinbaseTransaction;
 
     private static class TweakableTestNet2Params extends TestNet2Params {
@@ -75,7 +75,7 @@ public class BlockChainTest {
         Context context = new Context(unitTestParams);
         wallet = new Wallet(context) {
             @Override
-            public void receiveFromBlock(Transaction tx, StoredBlock block, BlockChain.NewBlockType blockType,
+            public void receiveFromBlock(Transaction tx, AbstractStored block, BlockChain.NewBlockType blockType,
                                          int relativityOffset) throws VerificationException {
                 super.receiveFromBlock(tx, block, blockType, relativityOffset);
                 BlockChainTest.this.block[0] = block;
@@ -100,7 +100,7 @@ public class BlockChainTest {
     @Test
     public void testBasicChaining() throws Exception {
         // Check that we can plug a few blocks together and the futures work.
-        ListenableFuture<StoredBlock> future = testNetChain.getHeightFuture(2);
+        ListenableFuture<StoredHeader> future = testNetChain.getHeightFuture(2);
         // Block 1 from the testnet.
         Block b1 = getBlock1();
         assertTrue(testNetChain.add(b1));
@@ -173,10 +173,10 @@ public class BlockChainTest {
         assertTrue(chain.add(b1));
         // Unconnected but stored. The head of the chain is still b1.
         assertFalse(chain.add(b3));
-        assertEquals(chain.getChainHead().getHeader(), b1.cloneAsHeader());
+        assertEquals(chain.getChainHead().getBlock(), b1.cloneAsHeader());
         // Add in the middle block.
         assertTrue(chain.add(b2));
-        assertEquals(chain.getChainHead().getHeader(), b3.cloneAsHeader());
+        assertEquals(chain.getChainHead().getBlock(), b3.cloneAsHeader());
     }
 
     @Test
@@ -254,16 +254,16 @@ public class BlockChainTest {
         Block b2 = b1.createNextBlock(coinbaseTo);
         Block b3 = b2.createNextBlock(coinbaseTo);
         assertTrue(chain.add(b1));
-        assertEquals(b1, block[0].getHeader());
+        assertEquals(b1, block[0].getBlock());
         assertTrue(chain.add(b2));
-        assertEquals(b2, block[0].getHeader());
+        assertEquals(b2, block[0].getBlock());
         assertTrue(chain.add(b3));
-        assertEquals(b3, block[0].getHeader());
-        assertEquals(b3, chain.getChainHead().getHeader());
+        assertEquals(b3, block[0].getBlock());
+        assertEquals(b3, chain.getChainHead().getBlock());
         assertTrue(chain.add(b2));
-        assertEquals(b3, chain.getChainHead().getHeader());
+        assertEquals(b3, chain.getChainHead().getBlock());
         // Wallet was NOT called with the new block because the duplicate add was spotted.
-        assertEquals(b3, block[0].getHeader());
+        assertEquals(b3, block[0].getBlock());
     }
 
     @Test
@@ -437,23 +437,23 @@ public class BlockChainTest {
         Block b2 = b1.createNextBlock(coinbaseTo);
         // Add block 1, no frills.
         assertTrue(chain.add(b1));
-        assertEquals(b1.cloneAsHeader(), chain.getChainHead().getHeader());
+        assertEquals(b1.cloneAsHeader(), chain.getChainHead().getBlock());
         assertEquals(1, chain.getBestChainHeight());
         assertEquals(1, wallet.getLastBlockSeenHeight());
         // Add block 2 while wallet is disconnected, to simulate crash.
         chain.removeWallet(wallet);
         assertTrue(chain.add(b2));
-        assertEquals(b2.cloneAsHeader(), chain.getChainHead().getHeader());
+        assertEquals(b2.cloneAsHeader(), chain.getChainHead().getBlock());
         assertEquals(2, chain.getBestChainHeight());
         assertEquals(1, wallet.getLastBlockSeenHeight());
         // Add wallet back. This will detect the height mismatch and repair the damage done.
         chain.addWallet(wallet);
-        assertEquals(b1.cloneAsHeader(), chain.getChainHead().getHeader());
+        assertEquals(b1.cloneAsHeader(), chain.getChainHead().getBlock());
         assertEquals(1, chain.getBestChainHeight());
         assertEquals(1, wallet.getLastBlockSeenHeight());
         // Now add block 2 correctly.
         assertTrue(chain.add(b2));
-        assertEquals(b2.cloneAsHeader(), chain.getChainHead().getHeader());
+        assertEquals(b2.cloneAsHeader(), chain.getChainHead().getBlock());
         assertEquals(2, chain.getBestChainHeight());
         assertEquals(2, wallet.getLastBlockSeenHeight());
     }

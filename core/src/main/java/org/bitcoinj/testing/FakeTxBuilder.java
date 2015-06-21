@@ -162,14 +162,14 @@ public class FakeTxBuilder {
     }
 
     public static class BlockPair {
-        public StoredBlock storedBlock;
+        public StoredHeader storedHeader;
         public Block block;
     }
 
     /** Emulates receiving a valid block that builds on top of the chain. */
-    public static BlockPair createFakeBlock(BlockStore blockStore, long timeSeconds, Transaction... transactions) {
+    public static BlockPair createFakeBlock(BlockStore<StoredHeader> blockStore, long timeSeconds, Transaction... transactions) {
         try {
-            Block chainHead = blockStore.getChainHead().getHeader();
+            Block chainHead = blockStore.getChainHead().getBlock();
             Address to = new ECKey().toAddress(chainHead.getParams());
             Block b = chainHead.createNextBlock(to, timeSeconds);
             // Coinbase tx was already added.
@@ -180,9 +180,9 @@ public class FakeTxBuilder {
             b.solve();
             BlockPair pair = new BlockPair();
             pair.block = b;
-            pair.storedBlock = blockStore.getChainHead().build(b);
-            blockStore.put(pair.storedBlock);
-            blockStore.setChainHead(pair.storedBlock);
+            pair.storedHeader = blockStore.getChainHead().build(b);
+            blockStore.put(pair.storedHeader);
+            blockStore.setChainHead(pair.storedHeader);
             return pair;
         } catch (VerificationException e) {
             throw new RuntimeException(e);  // Cannot happen.
@@ -191,12 +191,12 @@ public class FakeTxBuilder {
         }
     }
 
-    public static BlockPair createFakeBlock(BlockStore blockStore, Transaction... transactions) {
+    public static BlockPair createFakeBlock(BlockStore<StoredHeader> blockStore, Transaction... transactions) {
         return createFakeBlock(blockStore, Utils.currentTimeSeconds(), transactions);
     }
 
-    public static Block makeSolvedTestBlock(BlockStore blockStore, Address coinsTo) throws BlockStoreException {
-        Block b = blockStore.getChainHead().getHeader().createNextBlock(coinsTo);
+    public static Block makeSolvedTestBlock(BlockStore<StoredHeader> blockStore, Address coinsTo) throws BlockStoreException {
+        Block b = blockStore.getChainHead().getBlock().createNextBlock(coinsTo);
         b.solve();
         return b;
     }

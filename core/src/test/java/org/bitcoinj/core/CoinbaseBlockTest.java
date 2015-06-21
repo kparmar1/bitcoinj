@@ -66,7 +66,7 @@ public class CoinbaseBlockTest {
         block.verify();
         assertEquals(BLOCK_NONCE, block.getNonce());
 
-        StoredBlock storedBlock = new StoredBlock(block, BigInteger.ONE, BLOCK_OF_INTEREST); // Nonsense work - not used in test.
+        StoredHeader storedHeader = new StoredHeader(block, BigInteger.ONE, BLOCK_OF_INTEREST); // Nonsense work - not used in test.
 
         // Create a wallet contain the miner's key that receives a spend from a coinbase.
         ECKey miningKey = (new DumpedPrivateKey(params, MINING_PRIVATE_KEY)).getKey();
@@ -81,7 +81,7 @@ public class CoinbaseBlockTest {
         // Give the wallet the first transaction in the block - this is the coinbase tx.
         List<Transaction> transactions = block.getTransactions();
         assertNotNull(transactions);
-        wallet.receiveFromBlock(transactions.get(0), storedBlock, NewBlockType.BEST_CHAIN, 0);
+        wallet.receiveFromBlock(transactions.get(0), storedHeader, NewBlockType.BEST_CHAIN, 0);
 
         // Coinbase transaction should have been received successfully but be unavailable to spend (too young).
         assertEquals(BALANCE_AFTER_BLOCK, wallet.getBalance(BalanceType.ESTIMATED));

@@ -175,7 +175,7 @@ public class PaymentChannelStateTest extends TestWithWallet {
         }
 
         // Now confirm the contract transaction and make sure payments still work
-        chain.add(makeSolvedTestBlock(blockStore.getChainHead().getHeader(), multisigContract));
+        chain.add(makeSolvedTestBlock(blockStore.getChainHead().getBlock(), multisigContract));
 
         byte[] signature = clientState.incrementPaymentBy(size, null).signature.encodeToBitcoin();
         totalPayment = totalPayment.add(size);
@@ -194,7 +194,7 @@ public class PaymentChannelStateTest extends TestWithWallet {
         assertEquals(PaymentChannelClientState.State.CLOSED, clientState.getState());
 
         // Create a block with the payment transaction in it and give it to both wallets
-        chain.add(makeSolvedTestBlock(blockStore.getChainHead().getHeader(), reserializedCloseTx));
+        chain.add(makeSolvedTestBlock(blockStore.getChainHead().getBlock(), reserializedCloseTx));
 
         assertEquals(size.multiply(5), serverWallet.getBalance());
         assertEquals(0, serverWallet.getPendingTransactions().size());
@@ -221,7 +221,7 @@ public class PaymentChannelStateTest extends TestWithWallet {
         // Spend the client wallet's one coin
         Transaction spendCoinTx = wallet.sendCoinsOffline(Wallet.SendRequest.to(new ECKey().toAddress(params), COIN));
         assertEquals(Coin.ZERO, wallet.getBalance());
-        chain.add(makeSolvedTestBlock(blockStore.getChainHead().getHeader(), spendCoinTx, createFakeTx(params, CENT, myAddress)));
+        chain.add(makeSolvedTestBlock(blockStore.getChainHead().getBlock(), spendCoinTx, createFakeTx(params, CENT, myAddress)));
         assertEquals(CENT, wallet.getBalance());
 
         // Set the wallet's stored states to use our real test PeerGroup
@@ -312,7 +312,7 @@ public class PaymentChannelStateTest extends TestWithWallet {
 
         // Create a block with multisig contract and refund transaction in it and give it to both wallets,
         // making getBalance() include the transactions
-        chain.add(makeSolvedTestBlock(blockStore.getChainHead().getHeader(), multisigContract,clientBroadcastedRefund));
+        chain.add(makeSolvedTestBlock(blockStore.getChainHead().getBlock(), multisigContract,clientBroadcastedRefund));
 
         // Make sure we actually had to pay what initialize() told us we would
         assertEquals(wallet.getBalance(), CENT.subtract(Transaction.REFERENCE_DEFAULT_MIN_TX_FEE.multiply(2)));
@@ -530,7 +530,7 @@ public class PaymentChannelStateTest extends TestWithWallet {
         wallet.sendCoinsOffline(Wallet.SendRequest.to(new ECKey().toAddress(params), COIN));
         assertEquals(Coin.ZERO, wallet.getBalance());
 
-        chain.add(makeSolvedTestBlock(blockStore.getChainHead().getHeader(), createFakeTx(params, CENT, myAddress)));
+        chain.add(makeSolvedTestBlock(blockStore.getChainHead().getBlock(), createFakeTx(params, CENT, myAddress)));
         assertEquals(CENT, wallet.getBalance());
 
         Utils.setMockClock(); // Use mock clock
@@ -693,7 +693,7 @@ public class PaymentChannelStateTest extends TestWithWallet {
         }
 
         // Now give the server enough coins to pay the fee
-        StoredBlock block = new StoredBlock(makeSolvedTestBlock(blockStore, new ECKey().toAddress(params)), BigInteger.ONE, 1);
+        StoredHeader block = new StoredHeader(makeSolvedTestBlock(blockStore, new ECKey().toAddress(params)), BigInteger.ONE, 1);
         Transaction tx1 = createFakeTx(params, COIN, serverKey.toAddress(params));
         serverWallet.receiveFromBlock(tx1, block, AbstractBlockChain.NewBlockType.BEST_CHAIN, 0);
 
@@ -789,7 +789,7 @@ public class PaymentChannelStateTest extends TestWithWallet {
         doubleSpendContract.addOutput(halfCoin, myKey);
         doubleSpendContract = new Transaction(params, doubleSpendContract.bitcoinSerialize());
 
-        StoredBlock block = new StoredBlock(params.getGenesisBlock().createNextBlock(myKey.toAddress(params)), BigInteger.TEN, 1);
+        StoredHeader block = new StoredHeader(params.getGenesisBlock().createNextBlock(myKey.toAddress(params)), BigInteger.TEN, 1);
         serverWallet.receiveFromBlock(doubleSpendContract, block, AbstractBlockChain.NewBlockType.BEST_CHAIN, 0);
 
         // Now if we try to spend again the server will reject it since it saw a double-spend

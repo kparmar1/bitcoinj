@@ -85,7 +85,7 @@ import java.util.*;
  * </p>
  *
  */
-public abstract class DatabaseFullPrunedBlockStore implements FullPrunedBlockStore {
+public abstract class DatabaseFullPrunedBlockStore implements FullPrunedBlockStore<StoredBlock> {
     private static final Logger log = LoggerFactory.getLogger(DatabaseFullPrunedBlockStore.class);
 
     private static final String CHAIN_HEAD_SETTING                              = "chainhead";
@@ -615,11 +615,11 @@ public abstract class DatabaseFullPrunedBlockStore implements FullPrunedBlockSto
                     conn.get().prepareStatement(getInsertHeadersSQL());
             // We skip the first 4 bytes because (on mainnet) the minimum target has 4 0-bytes
             byte[] hashBytes = new byte[28];
-            System.arraycopy(storedBlock.getHeader().getHash().getBytes(), 4, hashBytes, 0, 28);
+            System.arraycopy(storedBlock.getBlock().getHash().getBytes(), 4, hashBytes, 0, 28);
             s.setBytes(1, hashBytes);
             s.setBytes(2, storedBlock.getChainWork().toByteArray());
             s.setInt(3, storedBlock.getHeight());
-            s.setBytes(4, storedBlock.getHeader().unsafeBitcoinSerialize());
+            s.setBytes(4, storedBlock.getHeader().getBlock().unsafeBitcoinSerialize());
             s.setBoolean(5, wasUndoable);
             s.executeUpdate();
             s.close();
@@ -633,7 +633,7 @@ public abstract class DatabaseFullPrunedBlockStore implements FullPrunedBlockSto
             s.setBoolean(1, true);
             // We skip the first 4 bytes because (on mainnet) the minimum target has 4 0-bytes
             byte[] hashBytes = new byte[28];
-            System.arraycopy(storedBlock.getHeader().getHash().getBytes(), 4, hashBytes, 0, 28);
+            System.arraycopy(storedBlock.getBlock().getHash().getBytes(), 4, hashBytes, 0, 28);
             s.setBytes(2, hashBytes);
             s.executeUpdate();
             s.close();
@@ -656,7 +656,7 @@ public abstract class DatabaseFullPrunedBlockStore implements FullPrunedBlockSto
         maybeConnect();
         // We skip the first 4 bytes because (on mainnet) the minimum target has 4 0-bytes
         byte[] hashBytes = new byte[28];
-        System.arraycopy(storedBlock.getHeader().getHash().getBytes(), 4, hashBytes, 0, 28);
+        System.arraycopy(storedBlock.getBlock().getHash().getBytes(), 4, hashBytes, 0, 28);
         int height = storedBlock.getHeight();
         byte[] transactions = null;
         byte[] txOutChanges = null;
@@ -854,7 +854,7 @@ public abstract class DatabaseFullPrunedBlockStore implements FullPrunedBlockSto
 
     @Override
     public void setChainHead(StoredBlock chainHead) throws BlockStoreException {
-        Sha256Hash hash = chainHead.getHeader().getHash();
+        Sha256Hash hash = chainHead.getBlock().getHash();
         this.chainHeadHash = hash;
         this.chainHeadBlock = chainHead;
         maybeConnect();
@@ -877,7 +877,7 @@ public abstract class DatabaseFullPrunedBlockStore implements FullPrunedBlockSto
 
     @Override
     public void setVerifiedChainHead(StoredBlock chainHead) throws BlockStoreException {
-        Sha256Hash hash = chainHead.getHeader().getHash();
+        Sha256Hash hash = chainHead.getBlock().getHash();
         this.verifiedChainHeadHash = hash;
         this.verifiedChainHeadBlock = chainHead;
         maybeConnect();

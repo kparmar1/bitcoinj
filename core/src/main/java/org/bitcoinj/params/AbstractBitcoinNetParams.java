@@ -18,14 +18,8 @@ package org.bitcoinj.params;
 
 import java.math.BigInteger;
 
-import org.bitcoinj.core.Block;
-import org.bitcoinj.core.Coin;
-import org.bitcoinj.core.NetworkParameters;
-import org.bitcoinj.core.StoredBlock;
-import org.bitcoinj.core.Transaction;
-import org.bitcoinj.core.Utils;
+import org.bitcoinj.core.*;
 import org.bitcoinj.utils.MonetaryFormat;
-import org.bitcoinj.core.VerificationException;
 import org.bitcoinj.store.BlockStore;
 import org.bitcoinj.store.BlockStoreException;
 import org.slf4j.Logger;
@@ -51,14 +45,14 @@ public abstract class AbstractBitcoinNetParams extends NetworkParameters {
      * @param storedPrev The previous stored block 
      * @return If this is a difficulty transition point 
      */
-    protected boolean isDifficultyTransitionPoint(StoredBlock storedPrev) {
+    protected boolean isDifficultyTransitionPoint(AbstractStored storedPrev) {
         return ((storedPrev.getHeight() + 1) % this.getInterval()) == 0;
     }
 
     @Override
-    public void checkDifficultyTransitions(final StoredBlock storedPrev, final Block nextBlock,
+    public void checkDifficultyTransitions(final AbstractStored storedPrev, final Block nextBlock,
     	final BlockStore blockStore) throws VerificationException, BlockStoreException {
-        Block prev = storedPrev.getHeader();
+        Block prev = storedPrev.getBlock();
 
         // Is this supposed to be a difficulty transition point?
         if (!isDifficultyTransitionPoint(storedPrev)) {
@@ -74,20 +68,20 @@ public abstract class AbstractBitcoinNetParams extends NetworkParameters {
         // We need to find a block far back in the chain. It's OK that this is expensive because it only occurs every
         // two weeks after the initial block chain download.
         long now = System.currentTimeMillis();
-        StoredBlock cursor = blockStore.get(prev.getHash());
+        AbstractStored cursor = (AbstractStored) blockStore.get(prev.getHash());
         for (int i = 0; i < this.getInterval() - 1; i++) {
             if (cursor == null) {
                 // This should never happen. If it does, it means we are following an incorrect or busted chain.
                 throw new VerificationException(
                         "Difficulty transition point but we did not find a way back to the genesis block.");
             }
-            cursor = blockStore.get(cursor.getHeader().getPrevBlockHash());
+            cursor = (AbstractStored) blockStore.get(cursor.getBlock().getPrevBlockHash());
         }
         long elapsed = System.currentTimeMillis() - now;
         if (elapsed > 50)
             log.info("Difficulty transition traversal took {}msec", elapsed);
 
-        Block blockIntervalAgo = cursor.getHeader();
+        Block blockIntervalAgo = cursor.getBlock();
         int timespan = (int) (prev.getTimeSeconds() - blockIntervalAgo.getTimeSeconds());
         // Limit the adjustment step.
         final int targetTimespan = this.getTargetTimespan();

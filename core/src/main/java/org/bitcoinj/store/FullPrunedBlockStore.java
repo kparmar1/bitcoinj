@@ -22,7 +22,7 @@ import org.bitcoinj.core.*;
 /**
  * <p>An implementor of FullPrunedBlockStore saves StoredBlock objects to some storage mechanism.</p>
  * 
- * <p>In addition to keeping track of a chain using {@link StoredBlock}s, it should also keep track of a second
+ * <p>In addition to keeping track of a chain using {@link org.bitcoinj.core.StoredHeader}s, it should also keep track of a second
  * copy of the chain which holds {@link StoredUndoableBlock}s. In this way, an application can perform a
  * headers-only initial sync and then use that information to more efficiently download a locally verified
  * full copy of the block chain.</p>
@@ -36,7 +36,7 @@ import org.bitcoinj.core.*;
  * Because N determines the memory usage, it is recommended that N be customizable. N should be chosen such that
  * re-orgs beyond that point are vanishingly unlikely, for example, a few thousand blocks is a reasonable choice.</p>
  * 
- * <p>It must store the {@link StoredBlock} of all blocks.</p>
+ * <p>It must store the {@link org.bitcoinj.core.StoredHeader} of all blocks.</p>
  *
  * <p>A FullPrunedBlockStore contains a map of hashes to [Full]StoredBlock. The hash is the double digest of the
  * Bitcoin serialization of the block header, <b>not</b> the header with the extra data as well.</p>
@@ -46,9 +46,9 @@ import org.bitcoinj.core.*;
  *
  * <p>FullPrunedBlockStores are thread safe.</p>
  */
-public interface FullPrunedBlockStore extends BlockStore, UTXOProvider {
+public interface FullPrunedBlockStore<T> extends BlockStore<T>, UTXOProvider {
     /**
-     * <p>Saves the given {@link StoredUndoableBlock} and {@link StoredBlock}. Calculates keys from the {@link StoredBlock}</p>
+     * <p>Saves the given {@link StoredUndoableBlock} and {@link org.bitcoinj.core.StoredHeader}. Calculates keys from the {@link org.bitcoinj.core.StoredHeader}</p>
      * 
      * <p>Though not required for proper function of a FullPrunedBlockStore, any user of a FullPrunedBlockStore should ensure
      * that a StoredUndoableBlock for each block up to the fully verified chain head has been added to this block store using
@@ -56,18 +56,18 @@ public interface FullPrunedBlockStore extends BlockStore, UTXOProvider {
      * 
      * @throws BlockStoreException if there is a problem with the underlying storage layer, such as running out of disk space.
      */
-    void put(StoredBlock storedBlock, StoredUndoableBlock undoableBlock) throws BlockStoreException;
+    void put(T storedBlock, StoredUndoableBlock undoableBlock) throws BlockStoreException;
     
     /**
      * Returns the StoredBlock that was added as a StoredUndoableBlock given a hash. The returned values block.getHash()
      * method will be equal to the parameter. If no such block is found, returns null.
      */
-    StoredBlock getOnceUndoableStoredBlock(Sha256Hash hash) throws BlockStoreException;
+    T getOnceUndoableStoredBlock(Sha256Hash hash) throws BlockStoreException;
 
     /**
      * Returns a {@link StoredUndoableBlock} whose block.getHash() method will be equal to the parameter. If no such
      * block is found, returns null. Note that this may return null more often than get(Sha256Hash hash) as not all
-     * {@link StoredBlock}s have a {@link StoredUndoableBlock} copy stored as well.
+     * {@link org.bitcoinj.core.StoredHeader}s have a {@link StoredUndoableBlock} copy stored as well.
      */
     StoredUndoableBlock getUndoBlock(Sha256Hash hash) throws BlockStoreException;
     
@@ -95,14 +95,14 @@ public interface FullPrunedBlockStore extends BlockStore, UTXOProvider {
     boolean hasUnspentOutputs(Sha256Hash hash, int numOutputs) throws BlockStoreException;
     
     /**
-     * Returns the {@link StoredBlock} that represents the top of the chain of greatest total work that has
+     * Returns the {@link org.bitcoinj.core.StoredHeader} that represents the top of the chain of greatest total work that has
      * been fully verified and the point in the chain at which the unspent transaction output set in this
      * store represents.
      */
-    StoredBlock getVerifiedChainHead() throws BlockStoreException;
+    T getVerifiedChainHead() throws BlockStoreException;
 
     /**
-     * Sets the {@link StoredBlock} that represents the top of the chain of greatest total work that has been
+     * Sets the {@link org.bitcoinj.core.StoredHeader} that represents the top of the chain of greatest total work that has been
      * fully verified. It should generally be set after a batch of updates to the transaction unspent output set,
      * before a call to commitDatabaseBatchWrite.
      * 
@@ -111,7 +111,7 @@ public interface FullPrunedBlockStore extends BlockStore, UTXOProvider {
      * In this way a class using a FullPrunedBlockStore only in full-verification mode can ignore the regular
      * {@link BlockStore} functions implemented as a part of a FullPrunedBlockStore.
      */
-    void setVerifiedChainHead(StoredBlock chainHead) throws BlockStoreException;
+    void setVerifiedChainHead(T chainHead) throws BlockStoreException;
     
     /**
      * <p>Begins/Commits/Aborts a database transaction.</p>

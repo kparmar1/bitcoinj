@@ -50,7 +50,7 @@ public class FilteredBlockAndPartialMerkleTreeTests extends TestWithPeerGroup {
         MemoryBlockStore store = new MemoryBlockStore(params);
 
         // Cheat and place the previous block (block 100000) at the head of the block store without supporting blocks
-        store.put(new StoredBlock(new Block(params, HEX.decode("0100000050120119172a610421a6c3011dd330d9df07b63616c2cc1f1cd00200000000006657a9252aacd5c0b2940996ecff952228c3067cc38d4885efb5a4ac4247e9f337221b4d4c86041b0f2b5710")),
+        store.put(new StoredHeader(new Block(params, HEX.decode("0100000050120119172a610421a6c3011dd330d9df07b63616c2cc1f1cd00200000000006657a9252aacd5c0b2940996ecff952228c3067cc38d4885efb5a4ac4247e9f337221b4d4c86041b0f2b5710")),
                 BigInteger.valueOf(1), 100000));
         store.setChainHead(store.get(new Sha256Hash("000000000003ba27aa200b1cecaad478d2b00432346c3f1f3986da1afd33e506")));
 

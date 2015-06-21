@@ -36,7 +36,7 @@ import static com.google.common.base.Preconditions.*;
  * may not be able to process very deep re-orgs and could be disconnected from the chain (requiring a replay),
  * but as they are virtually unheard of this is not a significant risk.
  */
-public class SPVBlockStore implements BlockStore {
+public class SPVBlockStore implements BlockStore<StoredHeader> {
     private static final Logger log = LoggerFactory.getLogger(SPVBlockStore.class);
 
     /** The default number of headers that will be stored in the ring buffer. */
@@ -56,9 +56,9 @@ public class SPVBlockStore implements BlockStore {
     // the OpenJDK/Oracle JVM calls into the get() methods are compiled down to inlined native code on Android each
     // get() call is actually a full-blown JNI method under the hood, meaning it's unbelievably slow. The caches
     // below let us stay in the JIT-compiled Java world without expensive JNI transitions and make a 10x difference!
-    protected LinkedHashMap<Sha256Hash, StoredBlock> blockCache = new LinkedHashMap<Sha256Hash, StoredBlock>() {
+    protected LinkedHashMap<Sha256Hash, StoredHeader> blockCache = new LinkedHashMap<Sha256Hash, StoredHeader>() {
         @Override
-        protected boolean removeEldestEntry(Map.Entry<Sha256Hash, StoredBlock> entry) {
+        protected boolean removeEldestEntry(Map.Entry<Sha256Hash, StoredHeader> entry) {
             return size() > 2050;  // Slightly more than the difficulty transition period.
         }
     };
@@ -144,7 +144,7 @@ public class SPVBlockStore implements BlockStore {
             lock.unlock();
         }
         Block genesis = params.getGenesisBlock().cloneAsHeader();
-        StoredBlock storedGenesis = new StoredBlock(genesis, genesis.getWork(), 0);
+        StoredHeader storedGenesis = new StoredHeader(genesis, genesis.getWork(), 0);
         put(storedGenesis);
         setChainHead(storedGenesis);
     }
@@ -155,7 +155,7 @@ public class SPVBlockStore implements BlockStore {
     }
 
     @Override
-    public void put(StoredBlock block) throws BlockStoreException {
+    public void put(StoredHeader block) throws BlockStoreException {
         final MappedByteBuffer buffer = this.buffer;
         if (buffer == null) throw new BlockStoreException("Store closed");
 
@@ -167,7 +167,7 @@ public class SPVBlockStore implements BlockStore {
                 cursor = FILE_PROLOGUE_BYTES;
             }
             buffer.position(cursor);
-            Sha256Hash hash = block.getHeader().getHash();
+            Sha256Hash hash = block.getBlock().getHash();
             notFoundCache.remove(hash);
             buffer.put(hash.getBytes());
             block.serializeCompact(buffer);
@@ -178,13 +178,13 @@ public class SPVBlockStore implements BlockStore {
 
     @Override
     @Nullable
-    public StoredBlock get(Sha256Hash hash) throws BlockStoreException {
+    public StoredHeader get(Sha256Hash hash) throws BlockStoreException {
         final MappedByteBuffer buffer = this.buffer;
         if (buffer == null) throw new BlockStoreException("Store closed");
 
         lock.lock();
         try {
-            StoredBlock cacheHit = blockCache.get(hash);
+            StoredHeader cacheHit = blockCache.get(hash);
             if (cacheHit != null)
                 return cacheHit;
             if (notFoundCache.get(hash) != null)
@@ -208,9 +208,9 @@ public class SPVBlockStore implements BlockStore {
                 buffer.get(scratch);
                 if (Arrays.equals(scratch, targetHashBytes)) {
                     // Found the target.
-                    StoredBlock storedBlock = StoredBlock.deserializeCompact(params, buffer);
-                    blockCache.put(hash, storedBlock);
-                    return storedBlock;
+                    StoredHeader storedHeader = StoredHeader.deserializeCompact(params, buffer);
+                    blockCache.put(hash, storedHeader);
+                    return storedHeader;
                 }
             } while (cursor != startingPoint);
             // Not found.
@@ -221,10 +221,10 @@ public class SPVBlockStore implements BlockStore {
         } finally { lock.unlock(); }
     }
 
-    protected StoredBlock lastChainHead = null;
+    protected StoredHeader lastChainHead = null;
 
     @Override
-    public StoredBlock getChainHead() throws BlockStoreException {
+    public StoredHeader getChainHead() throws BlockStoreException {
         final MappedByteBuffer buffer = this.buffer;
         if (buffer == null) throw new BlockStoreException("Store closed");
 
@@ -235,7 +235,7 @@ public class SPVBlockStore implements BlockStore {
                 buffer.position(8);
                 buffer.get(headHash);
                 Sha256Hash hash = new Sha256Hash(headHash);
-                StoredBlock block = get(hash);
+                StoredHeader block = get(hash);
                 if (block == null)
                     throw new BlockStoreException("Corrupted block store: could not find chain head: " + hash);
                 lastChainHead = block;
@@ -245,14 +245,14 @@ public class SPVBlockStore implements BlockStore {
     }
 
     @Override
-    public void setChainHead(StoredBlock chainHead) throws BlockStoreException {
+    public void setChainHead(StoredHeader chainHead) throws BlockStoreException {
         final MappedByteBuffer buffer = this.buffer;
         if (buffer == null) throw new BlockStoreException("Store closed");
 
         lock.lock();
         try {
             lastChainHead = chainHead;
-            byte[] headHash = chainHead.getHeader().getHash().getBytes();
+            byte[] headHash = chainHead.getBlock().getHash().getBytes();
             buffer.position(8);
             buffer.put(headHash);
         } finally { lock.unlock(); }
@@ -278,7 +278,7 @@ public class SPVBlockStore implements BlockStore {
         return params;
     }
 
-    protected static final int RECORD_SIZE = 32 /* hash */ + StoredBlock.COMPACT_SERIALIZED_SIZE;
+    protected static final int RECORD_SIZE = 32 /* hash */ + StoredHeader.COMPACT_SERIALIZED_SIZE;
 
     // File format:
     //   4 header bytes = "SPVB"

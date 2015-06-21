@@ -20,11 +20,7 @@ package org.bitcoinj.params;
 import java.math.BigInteger;
 import java.util.Date;
 
-import org.bitcoinj.core.Block;
-import org.bitcoinj.core.NetworkParameters;
-import org.bitcoinj.core.StoredBlock;
-import org.bitcoinj.core.Utils;
-import org.bitcoinj.core.VerificationException;
+import org.bitcoinj.core.*;
 import org.bitcoinj.store.BlockStore;
 import org.bitcoinj.store.BlockStoreException;
 
@@ -83,10 +79,10 @@ public class TestNet3Params extends AbstractBitcoinNetParams {
     private static final Date testnetDiffDate = new Date(1329264000000L);
 
     @Override
-    public void checkDifficultyTransitions(final StoredBlock storedPrev, final Block nextBlock,
+    public void checkDifficultyTransitions(final AbstractStored storedPrev, final Block nextBlock,
         final BlockStore blockStore) throws VerificationException, BlockStoreException {
         if (!isDifficultyTransitionPoint(storedPrev) && nextBlock.getTime().after(testnetDiffDate)) {
-            Block prev = storedPrev.getHeader();
+            Block prev = storedPrev.getBlock();
 
             // After 15th February 2012 the rules on the testnet change to avoid people running up the difficulty
             // and then leaving, making it too hard to mine a block. On non-difficulty transition points, easy
@@ -97,16 +93,16 @@ public class TestNet3Params extends AbstractBitcoinNetParams {
             if (timeDelta >= 0 && timeDelta <= NetworkParameters.TARGET_SPACING * 2) {
         	// Walk backwards until we find a block that doesn't have the easiest proof of work, then check
         	// that difficulty is equal to that one.
-        	StoredBlock cursor = storedPrev;
-        	while (!cursor.getHeader().equals(getGenesisBlock()) &&
+        	AbstractStored cursor = storedPrev;
+        	while (!cursor.getBlock().equals(getGenesisBlock()) &&
                        cursor.getHeight() % getInterval() != 0 &&
-                       cursor.getHeader().getDifficultyTargetAsInteger().equals(getMaxTarget()))
+                       cursor.getBlock().getDifficultyTargetAsInteger().equals(getMaxTarget()))
                     cursor = cursor.getPrev(blockStore);
-        	BigInteger cursorTarget = cursor.getHeader().getDifficultyTargetAsInteger();
+        	BigInteger cursorTarget = cursor.getBlock().getDifficultyTargetAsInteger();
         	BigInteger newTarget = nextBlock.getDifficultyTargetAsInteger();
         	if (!cursorTarget.equals(newTarget))
                     throw new VerificationException("Testnet block transition that is not allowed: " +
-                	Long.toHexString(cursor.getHeader().getDifficultyTarget()) + " vs " +
+                	Long.toHexString(cursor.getBlock().getDifficultyTarget()) + " vs " +
                 	Long.toHexString(nextBlock.getDifficultyTarget()));
             }
         } else {

@@ -1220,7 +1220,7 @@ public class Peer extends PeerSocketHandler {
                 fastCatchupTimeSecs = secondsSinceEpoch;
                 // If the given time is before the current chains head block time, then this has no effect (we already
                 // downloaded everything we need).
-                if (blockChain != null && fastCatchupTimeSecs > blockChain.getChainHead().getHeader().getTimeSeconds())
+                if (blockChain != null && fastCatchupTimeSecs > blockChain.getChainHead().getBlock().getTimeSeconds())
                     downloadBlockBodies = false;
             }
             this.useFilteredBlocks = useFilteredBlocks;
@@ -1294,8 +1294,8 @@ public class Peer extends PeerSocketHandler {
         // 100 block headers. If there is a re-org deeper than that, we'll end up downloading the entire chain. We
         // must always put the genesis block as the first entry.
         BlockStore store = checkNotNull(blockChain).getBlockStore();
-        StoredBlock chainHead = blockChain.getChainHead();
-        Sha256Hash chainHeadHash = chainHead.getHeader().getHash();
+        AbstractStored chainHead = blockChain.getChainHead();
+        Sha256Hash chainHeadHash = chainHead.getBlock().getHash();
         // Did we already make this request? If so, don't do it again.
         if (Objects.equal(lastGetBlocksBegin, chainHeadHash) && Objects.equal(lastGetBlocksEnd, toHash)) {
             log.info("blockChainDownloadLocked({}): ignoring duplicated request: {}", toHash, chainHeadHash);
@@ -1306,10 +1306,10 @@ public class Peer extends PeerSocketHandler {
         }
         if (log.isDebugEnabled())
             log.debug("{}: blockChainDownloadLocked({}) current head = {}",
-                    toString(), toHash.toString(), chainHead.getHeader().getHashAsString());
-        StoredBlock cursor = chainHead;
+                    toString(), toHash.toString(), chainHead.getBlock().getHashAsString());
+        AbstractStored cursor = chainHead;
         for (int i = 100; cursor != null && i > 0; i--) {
-            blockLocator.add(cursor.getHeader().getHash());
+            blockLocator.add(cursor.getBlock().getHash());
             try {
                 cursor = cursor.getPrev(store);
             } catch (BlockStoreException e) {
